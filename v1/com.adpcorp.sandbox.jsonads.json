@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "ads": {
+    "appOpen": {
+      "enabled": true,
+      "unitId": "ca-app-pub-3940256099942544/9257395921"
+    },
+    "banner": {
+      "enabled": true,
+      "unitId": "ca-app-pub-3940256099942544/9214589741"
+    },
+    "interstitial": {
+      "enabled": true,
+      "unitId": "ca-app-pub-3940256099942544/1033173712",
+      "everyNTaps": 4,
+      "cooldownSec": 60
+    },
+    "native": {
+      "enabled": true,
+      "unitId": "ca-app-pub-3940256099942544/2247696110"
+    }
+  }
+}
