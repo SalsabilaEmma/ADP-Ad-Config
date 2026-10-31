@@ -12,7 +12,7 @@
     "interstitial": {
       "enabled": true,
       "unitId": "ca-app-pub-3940256099942544/1033173712",
-      "everyNTaps": 4,
+      "everyNTaps": 6,
       "cooldownSec": 60
     },
     "native": {
