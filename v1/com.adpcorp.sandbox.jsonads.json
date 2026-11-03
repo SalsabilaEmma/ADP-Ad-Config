@@ -3,21 +3,21 @@
   "ads": {
     "appOpen": {
       "enabled": true,
-      "unitId": "ca-app-pub-3940256099942544/9257395921"
+      "unitId": "ca-app-pub-5326010034326903/2643940169"
     },
     "banner": {
       "enabled": true,
-      "unitId": "ca-app-pub-3940256099942544/9214589741"
+      "unitId": "ca-app-pub-5326010034326903/2914483035"
     },
     "interstitial": {
       "enabled": true,
-      "unitId": "ca-app-pub-3940256099942544/1033173712",
+      "unitId": "ca-app-pub-5326010034326903/7616145378",
       "everyNTaps": 3,
       "cooldownSec": 30
     },
     "native": {
       "enabled": true,
-      "unitId": "ca-app-pub-3940256099942544/2247696110"
+      "unitId": "ca-app-pub-5326010034326903/7975238028"
     }
   }
 }
