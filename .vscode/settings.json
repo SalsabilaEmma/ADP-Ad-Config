@@ -1,0 +1,9 @@
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["/v1/*.json"],
+      "url": "./schema/ad-config.schema.json"
+    }
+  ],
+  "files.insertFinalNewline": true
+}
