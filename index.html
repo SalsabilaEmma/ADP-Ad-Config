@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ADP Ad Config</title>
+<style>
+:root{
+  --bg:#F4F6F8; --surface:#FFFFFF; --fg:#17222C; --muted:#5B6975; --line:#D6DDE3;
+  --accent:#0E6B73; --test-bg:#E4E9F7; --test-fg:#3A4FA0;
+  --prod-bg:#DDF0E2; --prod-fg:#256B36; --off-bg:#ECEEF0; --off-fg:#6B7680;
+  --bad-bg:#F7E0DD; --bad-fg:#A3352A;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#10171D; --surface:#18232C; --fg:#E3EAF0; --muted:#97A5B0; --line:#2C3A45;
+  --accent:#5CC3CB; --test-bg:#222C4D; --test-fg:#A6B4F0;
+  --prod-bg:#183323; --prod-fg:#86D29A; --off-bg:#232E37; --off-fg:#8C99A3;
+  --bad-bg:#3B1F1C; --bad-fg:#F0968B; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans)}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 16px 48px;display:flex;flex-direction:column;gap:18px}
+h1{margin:0;font-size:24px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin:4px 0 0}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:120px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--muted)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=search]{flex:1;min-width:200px;font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+button{font:inherit;padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:820px;font-size:14px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.pkg{font-family:var(--mono);font-size:13px;word-break:break-all}
+.pkg a{color:var(--fg);text-decoration:none}
+.pkg a:hover{color:var(--accent);text-decoration:underline}
+.chip{display:inline-block;font:600 11px/1 var(--sans);letter-spacing:.04em;padding:5px 7px;border-radius:5px;white-space:nowrap}
+.test{background:var(--test-bg);color:var(--test-fg)}
+.prod{background:var(--prod-bg);color:var(--prod-fg)}
+.off{background:var(--off-bg);color:var(--off-fg)}
+.bad{background:var(--bad-bg);color:var(--bad-fg)}
+.ok{background:var(--prod-bg);color:var(--prod-fg)}
+.err{font-size:12.5px;color:var(--bad-fg);margin-top:4px}
+.note{font-size:13px;color:var(--muted)}
+.msg{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;color:var(--muted)}
+code{font-family:var(--mono);font-size:.92em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ADP Ad Config</h1>
+    <p class="sub">Status config iklan yang sedang disajikan ke app. Hanya baca. Edit lewat VS Code, lalu commit dan push.</p>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="bar">
+    <input type="search" id="q" placeholder="Cari package..." aria-label="Cari package">
+    <button type="button" id="reload">Muat ulang</button>
+  </div>
+
+  <div id="out"><div class="msg">Memuat daftar app...</div></div>
+
+  <p class="note">TEST = unit dari publisher test Google. PROD = publisher lain di allowlist. Aturan validasi dibaca dari <code>schema/ad-config.schema.json</code>, sama dengan pre-commit hook. Perubahan baru biasanya terlihat 40 sampai 90 detik setelah push.</p>
+</div>
+
+<script>
+(function(){
+  var OWNER = 'SalsabilaEmma', REPO = 'ADP-Ad-Config';
+  var TEST_PUB = '3940256099942544';
+  var FORMATS = ['appOpen','banner','interstitial','native'];
+  var LABEL = {appOpen:'App Open', banner:'Banner', interstitial:'Interstitial', native:'Native'};
+  var rows = [];
+  var unitRe = null;
+
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+  function isInt(v){ return typeof v==='number' && Number.isInteger(v); }
+
+  function validate(d){
+    var e=[];
+    if(!d || typeof d!=='object' || Array.isArray(d)) return ['bukan object'];
+    Object.keys(d).forEach(function(k){ if(k!=='schema' && k!=='ads') e.push('key asing: '+k); });
+    if(d.schema!==1) e.push('schema harus 1');
+    var a=d.ads;
+    if(!a || typeof a!=='object'){ e.push('ads tidak ada'); return e; }
+    Object.keys(a).forEach(function(k){ if(FORMATS.indexOf(k)<0) e.push('format asing: '+k); });
+    FORMATS.forEach(function(f){
+      var x=a[f];
+      if(!x || typeof x!=='object'){ e.push(f+' tidak ada'); return; }
+      var allowed=['enabled','unitId'].concat(f==='interstitial'?['everyNTaps','cooldownSec']:[]);
+      Object.keys(x).forEach(function(k){ if(allowed.indexOf(k)<0) e.push(f+'.'+k+' asing'); });
+      if(typeof x.enabled!=='boolean') e.push(f+'.enabled harus true/false');
+      if(typeof x.unitId!=='string' || !unitRe.test(x.unitId)) e.push(f+'.unitId tidak valid');
+      if(f==='interstitial'){
+        if(!isInt(x.everyNTaps) || x.everyNTaps<3 || x.everyNTaps>20) e.push('everyNTaps harus 3..20');
+        if(!isInt(x.cooldownSec) || x.cooldownSec<0 || x.cooldownSec>600) e.push('cooldownSec harus 0..600');
+      }
+    });
+    return e;
+  }
+
+  function unitKind(id){
+    if(typeof id!=='string') return 'bad';
+    var m=id.match(/^ca-app-pub-(\d{16})\//);
+    if(!m) return 'bad';
+    return m[1]===TEST_PUB ? 'test' : 'prod';
+  }
+
+  function fetchJson(url){
+    return fetch(url,{cache:'no-store'}).then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.text();
+    }).then(function(t){ return JSON.parse(t); });
+  }
+
+  function load(){
+    document.getElementById('out').replaceChildren(el('div','msg','Memuat daftar app...'));
+    fetchJson('schema/ad-config.schema.json').then(function(s){
+      var p=s && s.definitions && s.definitions.unitId && s.definitions.unitId.pattern;
+      if(!p) throw new Error('pola unitId tidak ditemukan di schema');
+      unitRe=new RegExp(p);
+      return fetch('https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/v1',{headers:{'Accept':'application/vnd.github+json'}});
+    }).then(function(r){
+      if(r.status===403) throw new Error('Batas akses GitHub API tercapai (60 per jam). Coba lagi nanti.');
+      if(!r.ok) throw new Error('Gagal membaca daftar file (HTTP '+r.status+')');
+      return r.json();
+    }).then(function(list){
+      var files=list.filter(function(f){ return f.type==='file' && /\.json$/.test(f.name); })
+        .map(function(f){ return f.name; }).sort();
+      return Promise.all(files.map(function(name){
+        var url='v1/'+name;
+        return fetchJson(url).then(function(d){ return {name:name,url:url,data:d,errors:validate(d)}; })
+          .catch(function(err){ return {name:name,url:url,data:null,errors:['tidak bisa dibaca: '+err.message]}; });
+      }));
+    }).then(function(r){ rows=r; render(); })
+    .catch(function(err){
+      document.getElementById('out').replaceChildren(el('div','msg',err.message));
+      document.getElementById('stats').replaceChildren();
+    });
+  }
+
+  function stat(n,label){ var s=el('div','stat'); s.appendChild(el('b',null,String(n))); s.appendChild(el('span',null,label)); return s; }
+
+  function render(){
+    var q=document.getElementById('q').value.trim().toLowerCase();
+    var view=rows.filter(function(r){ return !q || r.name.toLowerCase().indexOf(q)>=0; });
+
+    var invalid=rows.filter(function(r){ return r.errors.length; }).length;
+    var prod=rows.filter(function(r){ return r.data && !r.errors.length && FORMATS.some(function(f){ return unitKind(r.data.ads[f].unitId)==='prod'; }); }).length;
+    document.getElementById('stats').replaceChildren(
+      stat(rows.length,'app'),
+      stat(prod,'sudah pakai unit prod'),
+      stat(rows.length-prod-invalid,'masih unit test'),
+      stat(invalid,'tidak valid')
+    );
+
+    if(!view.length){ document.getElementById('out').replaceChildren(el('div','msg', rows.length?'Tidak ada yang cocok.':'Belum ada file di v1/.')); return; }
+
+    var wrap=el('div','tbl'), t=el('table'), thead=el('thead'), hr=el('tr');
+    ['Package','Status'].concat(FORMATS.map(function(f){return LABEL[f];})).concat(['Tap','Cooldown']).forEach(function(h){ hr.appendChild(el('th',null,h)); });
+    thead.appendChild(hr); t.appendChild(thead);
+    var tb=el('tbody');
+    view.forEach(function(r){
+      var tr=el('tr');
+      var pk=el('td','pkg'), a=el('a',null,r.name.replace(/\.json$/,'')); a.href=r.url; a.target='_blank'; a.rel='noopener';
+      pk.appendChild(a);
+      if(r.errors.length){ var er=el('div','err',r.errors.slice(0,3).join('; ')+(r.errors.length>3?' (+'+(r.errors.length-3)+')':'')); pk.appendChild(er); }
+      tr.appendChild(pk);
+      var st=el('td'); st.appendChild(el('span','chip '+(r.errors.length?'bad':'ok'), r.errors.length?'TIDAK VALID':'VALID')); tr.appendChild(st);
+      FORMATS.forEach(function(f){
+        var td=el('td'), x=r.data && r.data.ads && r.data.ads[f];
+        if(!x){ td.appendChild(el('span','chip bad','-')); }
+        else if(x.enabled===false){ td.appendChild(el('span','chip off','MATI')); }
+        else { var k=unitKind(x.unitId); td.appendChild(el('span','chip '+k, k==='bad'?'?':k.toUpperCase())); td.title=String(x.unitId); }
+        tr.appendChild(td);
+      });
+      var i=r.data && r.data.ads && r.data.ads.interstitial;
+      tr.appendChild(el('td','num', i && isInt(i.everyNTaps)?String(i.everyNTaps):'-'));
+      tr.appendChild(el('td','num', i && isInt(i.cooldownSec)?i.cooldownSec+' dtk':'-'));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb); wrap.appendChild(t);
+    document.getElementById('out').replaceChildren(wrap);
+  }
+
+  document.getElementById('q').addEventListener('input',render);
+  document.getElementById('reload').addEventListener('click',load);
+  load();
+})();
+</script>
+</body>
+</html>
