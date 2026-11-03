@@ -34,7 +34,7 @@ button{font:inherit;padding:9px 14px;border:1px solid var(--line);border-radius:
 button:hover{border-color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;min-width:820px;font-size:14px}
+table{border-collapse:collapse;width:100%;min-width:940px;font-size:14px}
 th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 tr:last-child td{border-bottom:0}
@@ -42,6 +42,12 @@ td.num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
 .pkg{font-family:var(--mono);font-size:13px;word-break:break-all}
 .pkg a{color:var(--fg);text-decoration:none}
 .pkg a:hover{color:var(--accent);text-decoration:underline}
+.links{display:flex;gap:10px;margin-top:4px;font-family:var(--sans);font-size:12.5px}
+.links a{color:var(--accent);text-decoration:none}
+.links a:hover{text-decoration:underline}
+td.when{white-space:nowrap;font-size:13px}
+td.when small{display:block;color:var(--muted);font-size:12px}
+.recent{color:var(--accent);font-weight:600}
 .chip{display:inline-block;font:600 11px/1 var(--sans);letter-spacing:.04em;padding:5px 7px;border-radius:5px;white-space:nowrap}
 .test{background:var(--test-bg);color:var(--test-fg)}
 .prod{background:var(--prod-bg);color:var(--prod-fg)}
@@ -70,7 +76,7 @@ code{font-family:var(--mono);font-size:.92em}
 
   <div id="out"><div class="msg">Memuat daftar app...</div></div>
 
-  <p class="note">TEST = unit dari publisher test Google. PROD = publisher lain di allowlist. Aturan validasi dibaca dari <code>schema/ad-config.schema.json</code>, sama dengan pre-commit hook. Perubahan baru biasanya terlihat 40 sampai 90 detik setelah push.</p>
+  <p class="note">TEST = unit dari publisher test Google. PROD = publisher lain di allowlist. Aturan validasi dibaca dari <code>schema/ad-config.schema.json</code>, sama dengan pre-commit hook. Waktu "Diubah" ditulis oleh pre-commit hook ke <code>meta/index.json</code>. Perubahan baru biasanya terlihat 40 sampai 90 detik setelah push. Edit lewat VS Code, bukan web GitHub, supaya tetap divalidasi hook.</p>
 </div>
 
 <script>
@@ -122,30 +128,68 @@ code{font-family:var(--mono);font-size:.92em}
     }).then(function(t){ return JSON.parse(t); });
   }
 
+  var source='';
+
+  function listFromIndex(){
+    return fetchJson('meta/index.json').then(function(m){
+      if(!m || !m.files) throw new Error('index kosong');
+      source='meta/index.json';
+      return Object.keys(m.files).map(function(n){ return {name:n, updated:m.files[n].updated||null}; });
+    });
+  }
+  function listFromApi(){
+    return fetch('https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/v1',{headers:{'Accept':'application/vnd.github+json'}})
+      .then(function(r){
+        if(r.status===403) throw new Error('Batas akses GitHub API tercapai (60 per jam). Coba lagi nanti.');
+        if(!r.ok) throw new Error('Gagal membaca daftar file (HTTP '+r.status+')');
+        return r.json();
+      }).then(function(list){
+        source='GitHub API (meta/index.json belum ada)';
+        return list.filter(function(f){ return f.type==='file' && /\.json$/.test(f.name); })
+          .map(function(f){ return {name:f.name, updated:null}; });
+      });
+  }
+
   function load(){
     document.getElementById('out').replaceChildren(el('div','msg','Memuat daftar app...'));
     fetchJson('schema/ad-config.schema.json').then(function(s){
       var p=s && s.definitions && s.definitions.unitId && s.definitions.unitId.pattern;
       if(!p) throw new Error('pola unitId tidak ditemukan di schema');
       unitRe=new RegExp(p);
-      return fetch('https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/v1',{headers:{'Accept':'application/vnd.github+json'}});
-    }).then(function(r){
-      if(r.status===403) throw new Error('Batas akses GitHub API tercapai (60 per jam). Coba lagi nanti.');
-      if(!r.ok) throw new Error('Gagal membaca daftar file (HTTP '+r.status+')');
-      return r.json();
-    }).then(function(list){
-      var files=list.filter(function(f){ return f.type==='file' && /\.json$/.test(f.name); })
-        .map(function(f){ return f.name; }).sort();
-      return Promise.all(files.map(function(name){
-        var url='v1/'+name;
-        return fetchJson(url).then(function(d){ return {name:name,url:url,data:d,errors:validate(d)}; })
-          .catch(function(err){ return {name:name,url:url,data:null,errors:['tidak bisa dibaca: '+err.message]}; });
+      return listFromIndex().catch(listFromApi);
+    }).then(function(files){
+      return Promise.all(files.map(function(f){
+        var url='v1/'+f.name;
+        return fetchJson(url).then(function(d){ return {name:f.name,url:url,updated:f.updated,data:d,errors:validate(d)}; })
+          .catch(function(err){ return {name:f.name,url:url,updated:f.updated,data:null,errors:['tidak bisa dibaca: '+err.message]}; });
       }));
-    }).then(function(r){ rows=r; render(); })
+    }).then(function(r){
+      r.sort(function(a,b){
+        if(a.updated && b.updated && a.updated!==b.updated) return a.updated<b.updated?1:-1;
+        if(a.updated && !b.updated) return -1;
+        if(!a.updated && b.updated) return 1;
+        return a.name<b.name?-1:1;
+      });
+      rows=r; render();
+    })
     .catch(function(err){
       document.getElementById('out').replaceChildren(el('div','msg',err.message));
       document.getElementById('stats').replaceChildren();
     });
+  }
+
+  function ago(iso){
+    var t=Date.parse(iso); if(isNaN(t)) return '';
+    var s=Math.max(0,Math.round((Date.now()-t)/1000));
+    if(s<60) return 'baru saja';
+    if(s<3600) return Math.floor(s/60)+' mnt lalu';
+    if(s<86400) return Math.floor(s/3600)+' jam lalu';
+    return Math.floor(s/86400)+' hari lalu';
+  }
+  function fmt(iso){
+    var d=new Date(iso); if(isNaN(d)) return iso;
+    var p=function(n){return String(n).padStart(2,'0');};
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
   }
 
   function stat(n,label){ var s=el('div','stat'); s.appendChild(el('b',null,String(n))); s.appendChild(el('span',null,label)); return s; }
@@ -166,13 +210,17 @@ code{font-family:var(--mono);font-size:.92em}
     if(!view.length){ document.getElementById('out').replaceChildren(el('div','msg', rows.length?'Tidak ada yang cocok.':'Belum ada file di v1/.')); return; }
 
     var wrap=el('div','tbl'), t=el('table'), thead=el('thead'), hr=el('tr');
-    ['Package','Status'].concat(FORMATS.map(function(f){return LABEL[f];})).concat(['Tap','Cooldown']).forEach(function(h){ hr.appendChild(el('th',null,h)); });
+    ['Package','Status'].concat(FORMATS.map(function(f){return LABEL[f];})).concat(['Tap','Cooldown','Diubah']).forEach(function(h){ hr.appendChild(el('th',null,h)); });
     thead.appendChild(hr); t.appendChild(thead);
     var tb=el('tbody');
     view.forEach(function(r){
       var tr=el('tr');
       var pk=el('td','pkg'), a=el('a',null,r.name.replace(/\.json$/,'')); a.href=r.url; a.target='_blank'; a.rel='noopener';
       pk.appendChild(a);
+      var ln=el('div','links');
+      var hist=el('a',null,'Riwayat'); hist.href='https://github.com/'+OWNER+'/'+REPO+'/commits/main/v1/'+encodeURIComponent(r.name); hist.target='_blank'; hist.rel='noopener';
+      var view=el('a',null,'Lihat di repo'); view.href='https://github.com/'+OWNER+'/'+REPO+'/blob/main/v1/'+encodeURIComponent(r.name); view.target='_blank'; view.rel='noopener';
+      ln.appendChild(hist); ln.appendChild(view); pk.appendChild(ln);
       if(r.errors.length){ var er=el('div','err',r.errors.slice(0,3).join('; ')+(r.errors.length>3?' (+'+(r.errors.length-3)+')':'')); pk.appendChild(er); }
       tr.appendChild(pk);
       var st=el('td'); st.appendChild(el('span','chip '+(r.errors.length?'bad':'ok'), r.errors.length?'TIDAK VALID':'VALID')); tr.appendChild(st);
@@ -186,10 +234,17 @@ code{font-family:var(--mono);font-size:.92em}
       var i=r.data && r.data.ads && r.data.ads.interstitial;
       tr.appendChild(el('td','num', i && isInt(i.everyNTaps)?String(i.everyNTaps):'-'));
       tr.appendChild(el('td','num', i && isInt(i.cooldownSec)?i.cooldownSec+' dtk':'-'));
+      var w=el('td','when');
+      if(r.updated){
+        var rel=ago(r.updated), main=el('span',null,rel);
+        if(Date.now()-Date.parse(r.updated)<3600000) main.className='recent';
+        w.appendChild(main); w.appendChild(el('small',null,fmt(r.updated))); w.title=r.updated;
+      } else { w.textContent='-'; }
+      tr.appendChild(w);
       tb.appendChild(tr);
     });
     t.appendChild(tb); wrap.appendChild(t);
-    document.getElementById('out').replaceChildren(wrap);
+    document.getElementById('out').replaceChildren(wrap, el('p','note','Sumber daftar: '+source+'. Urut dari yang terakhir diubah.'));
   }
 
   document.getElementById('q').addEventListener('input',render);
