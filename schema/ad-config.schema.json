@@ -51,7 +51,7 @@
     "unitId": {
       "description": "Ad unit ID AdMob. Hanya publisher yang diizinkan (test atau milik sendiri), format ca-app-pub-<publisher>/<10 digit>.",
       "type": "string",
-      "pattern": "^ca-app-pub-(3940256099942544|5326010034326903)/[0-9]{10}$"
+      "pattern": "^ca-app-pub-(3940256099942544|5326010034326903|6524468841691419)/[0-9]{10}$"
     },
     "format": {
       "description": "Pengaturan satu format iklan.",
