@@ -9,6 +9,9 @@
     "com.leowstudio.COOVIEendoscopeguide.json": {
       "updated": "2026-11-20T10:00:45+07:00"
     },
+    "com.leowstudio.CoospoHW9HRarmband.guide.json": {
+      "updated": "2026-11-20T17:14:57+07:00"
+    },
     "com.leowstudio.SowoQ18.wirelessspeakerhint.json": {
       "updated": "2026-11-20T10:00:45+07:00"
     },
@@ -25,6 +28,6 @@
       "updated": "2026-11-20T10:03:32+07:00"
     }
   },
-  "generated": "2026-11-20T17:06:41+07:00",
+  "generated": "2026-11-20T17:14:57+07:00",
   "schema": 1
 }
