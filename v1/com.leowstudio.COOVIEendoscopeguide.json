@@ -1,9 +1,23 @@
 {
   "schema": 1,
   "ads": {
-    "appOpen":      { "enabled": true, "unitId": "ca-app-pub-3940256099942544/9257395921" },
-    "banner":       { "enabled": true, "unitId": "ca-app-pub-3940256099942544/9214589741" },
-    "interstitial": { "enabled": true, "unitId": "ca-app-pub-3940256099942544/1033173712", "everyNTaps": 10, "cooldownSec": 30 },
-    "native":       { "enabled": true, "unitId": "ca-app-pub-3940256099942544/2247696110" }
+    "appOpen": {
+      "enabled": true,
+      "unitId": "ca-app-pub-6524468841691419/3653333108"
+    },
+    "banner": {
+      "enabled": true,
+      "unitId": "ca-app-pub-6524468841691419/1027169761"
+    },
+    "interstitial": {
+      "enabled": true,
+      "unitId": "ca-app-pub-6524468841691419/9609026500",
+      "everyNTaps": 3,
+      "cooldownSec": 30
+    },
+    "native": {
+      "enabled": true,
+      "unitId": "ca-app-pub-6524468841691419/6087924750"
+    }
   }
 }
