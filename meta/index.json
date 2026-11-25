@@ -33,11 +33,17 @@
     "com.sarifahnm.ChefiQsenseprobeguide.json": {
       "updated": "2026-11-20T10:03:32+07:00"
     },
+    "com.sarifahnm.DMSSipcamera.appguide.json": {
+      "updated": "2026-11-25T14:11:32+07:00"
+    },
     "com.sarifahnm.HitronCODA56modem.appguide.json": {
       "updated": "2026-11-24T16:25:10+07:00"
     },
     "com.sarifahnm.RayneoX3Pro.glassesGuide.json": {
       "updated": "2026-11-24T18:27:43+07:00"
+    },
+    "com.sarifahnm.SkybasicMicroscope.appGuide.json": {
+      "updated": "2026-11-25T14:11:32+07:00"
     },
     "com.sarifahnm.Tendarouterguide.json": {
       "updated": "2026-11-12T08:54:20+07:00"
@@ -46,6 +52,6 @@
       "updated": "2026-11-20T10:03:32+07:00"
     }
   },
-  "generated": "2026-11-24T18:27:43+07:00",
+  "generated": "2026-11-25T14:11:32+07:00",
   "schema": 1
 }
